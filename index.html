@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>$FINNPUTER · Buyback &amp; Burn</title>
+<meta name="description" content="Live buyback & burn tracker for $FINNPUTER. 100% of FINNPUTER Trade bot fees buy back and burn $FINNPUTER. The bot keeps nothing.">
+<meta property="og:title" content="$FINNPUTER · Buyback & Burn">
+<meta property="og:description" content="100% of bot fees buy back and burn $FINNPUTER. Live, on-chain, verifiable.">
+<meta property="og:image" content="https://trade.finnputerdex.com/og-image.png">
+<meta property="og:url" content="https://burns.finnputerdex.com">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06080d; --panel:#0b1018; --panel2:#0e141e; --line:#1b2533;
+  --green:#16ff9b; --green-dim:#0e9d62; --ink:#dfe7f0; --mut:#7c8a9c;
+  --red:#ff5470; --amber:#ffcf5c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Space Grotesk",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:2;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.16) 3px);
+  mix-blend-mode:multiply; opacity:.5;
+}
+.glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(60% 50% at 50% 0%,rgba(22,255,155,.10),transparent 70%);}
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+.mono{font-family:"JetBrains Mono",monospace}
+a{color:var(--green);text-decoration:none}
+a:hover{text-decoration:underline}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.brand b{font-weight:700;letter-spacing:.5px}
+.brand small{display:block;color:var(--mut);font-size:12px;letter-spacing:.4px}
+.toplinks{display:flex;gap:8px;flex-wrap:wrap}
+.toplinks a{font-size:13px;border:1px solid var(--line);padding:8px 12px;border-radius:9px;color:var(--ink)}
+.toplinks a:hover{border-color:var(--green);text-decoration:none}
+
+.hero{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));border-radius:16px;padding:26px 24px;margin-bottom:22px}
+.hero h1{font-size:clamp(26px,4.4vw,40px);margin:0 0 8px;line-height:1.05}
+.hero h1 .fire{color:var(--green);text-shadow:0 0 22px rgba(22,255,155,.5)}
+.hero p{color:var(--mut);margin:0;max-width:62ch;line-height:1.55}
+.ca{margin-top:16px;display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);background:#070b11;border-radius:10px;padding:9px 12px;font-size:13px}
+.ca span{color:var(--mut)}
+.ca code{color:var(--green)}
+.ca button{background:none;border:none;color:var(--mut);cursor:pointer;font-family:inherit;font-size:12px}
+.ca button:hover{color:var(--green)}
+
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+@media(max-width:840px){.grid{grid-template-columns:repeat(2,1fr)}}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:18px 16px;position:relative;overflow:hidden}
+.card .lab{color:var(--mut);font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.card .val{font-size:clamp(20px,3vw,28px);font-weight:700;line-height:1}
+.card .val.green{color:var(--green)}
+.card .sub{color:var(--mut);font-size:12px;margin-top:7px}
+.card.big{grid-column:span 2}
+
+.panel{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:18px 18px 6px;margin-bottom:22px}
+.panel h3{margin:0 0 4px;font-size:15px;letter-spacing:.4px}
+.panel .ph{color:var(--mut);font-size:12px;margin:0 0 14px}
+#chart{width:100%;height:180px;display:block}
+
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 2px;border-top:1px solid var(--line)}
+.feed li:first-child{border-top:none}
+.feed .amt{font-weight:600}
+.feed .amt b{color:var(--green)}
+.feed .meta{color:var(--mut);font-size:12px;text-align:right;white-space:nowrap}
+.feed .meta a{font-size:12px}
+
+.state{padding:30px 6px;text-align:center;color:var(--mut)}
+.state .em{font-size:30px;display:block;margin-bottom:10px;filter:grayscale(.2)}
+.state b{color:var(--ink)}
+.err{color:var(--amber)}
+
+footer{margin-top:34px;color:var(--mut);font-size:12px;text-align:center;line-height:1.7}
+footer a{color:var(--mut)}
+.upd{display:inline-flex;align-items:center;gap:7px}
+.upd .d{width:7px;height:7px;border-radius:50%;background:var(--green-dim)}
+.upd.live .d{background:var(--green);box-shadow:0 0 8px var(--green)}
+.skel{color:var(--mut)}
+.warnbox{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;color:var(--mut);font-size:12.5px;margin-bottom:22px;background:#070b11}
+.warnbox b{color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <span class="dot"></span>
+      <div><b>$FINNPUTER · BUYBACK &amp; BURN</b><small class="mono">Scan first. Then ape.</small></div>
+    </div>
+    <nav class="toplinks">
+      <a href="https://t.me/FinnputerTradeBot" target="_blank" rel="noopener">Open the bot</a>
+      <a href="https://t.me/FinnputerTrade" target="_blank" rel="noopener">Channel</a>
+      <a href="https://hub.finnputerdex.com" target="_blank" rel="noopener">$FINNPUTER hub</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Every fee feeds the <span class="fire">burn</span>.</h1>
+    <p>100% of the FINNPUTER Trade bot's trading fees buy back and burn $FINNPUTER. The bot keeps nothing. Once the fee wallet reaches 0.5 SOL it buys $FINNPUTER on the open market and burns every token. All of it is on-chain and verifiable below.</p>
+    <div class="ca">
+      <span>CA</span><code id="ca" class="mono">—</code>
+      <button id="copyca" title="Copy">copy</button>
+    </div>
+  </section>
+
+  <div id="cfgwarn" class="warnbox" style="display:none">
+    <b>Setup needed.</b> Open <code class="mono">index.html</code> and set <code class="mono">FEE_WALLET</code> and <code class="mono">HELIUS_API_KEY</code> in the CONFIG block at the top of the script. Until then the dashboard can't read burns.
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="lab">Total burned</div>
+      <div class="val green mono" id="m_burned">—</div>
+      <div class="sub" id="m_burned_sub">$FINNPUTER</div>
+    </div>
+    <div class="card">
+      <div class="lab">% of supply</div>
+      <div class="val mono" id="m_pct">—</div>
+      <div class="sub">of total supply</div>
+    </div>
+    <div class="card">
+      <div class="lab">Value burned</div>
+      <div class="val mono" id="m_usd">—</div>
+      <div class="sub">at current price</div>
+    </div>
+    <div class="card">
+      <div class="lab">Burns</div>
+      <div class="val mono" id="m_count">—</div>
+      <div class="sub" id="m_sol">SOL spent: —</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Cumulative burned</h3>
+    <p class="ph">$FINNPUTER permanently removed from supply, over time.</p>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3>Live burn feed</h3>
+    <p class="ph">Newest first. Each row links to the burn transaction on Solscan.</p>
+    <ul class="feed" id="feed">
+      <li><span class="skel">Loading on-chain data…</span></li>
+    </ul>
+  </div>
+
+  <footer>
+    <p class="upd" id="upd"><span class="d"></span><span>—</span></p>
+    <p>
+      <a id="fw" href="#" target="_blank" rel="noopener">Fee wallet on Solscan</a> ·
+      <a href="https://t.me/FinnputerTradeBot" target="_blank" rel="noopener">FINNPUTER Trade bot</a> ·
+      <a href="https://trade.finnputerdex.com" target="_blank" rel="noopener">trade.finnputerdex.com</a>
+    </p>
+    <p>Data read live from Solana. Not financial advice. DYOR.</p>
+  </footer>
+
+</div>
+
+<script>
+/* ============================================================
+   CONFIG  —  fill these two, the rest is already set.
+   ============================================================ */
+const CONFIG = {
+  // The bot's FEE_WALLET address (the one that buys & burns). REQUIRED.
+  FEE_WALLET: "",
+
+  // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
+  // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
+  // so it can't be abused elsewhere. REQUIRED.
+  HELIUS_API_KEY: "",
+
+  // $FINNPUTER mint — already set.
+  MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
+
+  // Total minted supply (Bags standard = 1,000,000,000). Used for % of supply.
+  TOTAL_SUPPLY: 1000000000,
+
+  // Auto-refresh interval (ms).
+  REFRESH_MS: 60000
+};
+/* ============================================================ */
+
+const $ = id => document.getElementById(id);
+const fmt = n => {
+  n = Number(n) || 0;
+  if (n >= 1e9) return (n/1e9).toFixed(2)+"B";
+  if (n >= 1e6) return (n/1e6).toFixed(2)+"M";
+  if (n >= 1e3) return (n/1e3).toFixed(2)+"K";
+  return n.toLocaleString(undefined,{maximumFractionDigits:2});
+};
+const usd = n => "$"+ (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:2});
+const shortSig = s => s.slice(0,6)+"…"+s.slice(-6);
+const ago = ts => {
+  const s = Math.floor(Date.now()/1000 - ts);
+  if (s < 60) return s+"s ago";
+  if (s < 3600) return Math.floor(s/60)+"m ago";
+  if (s < 86400) return Math.floor(s/3600)+"h ago";
+  return Math.floor(s/86400)+"d ago";
+};
+
+// CA chip
+$("ca").textContent = CONFIG.MINT;
+$("copyca").onclick = () => { navigator.clipboard.writeText(CONFIG.MINT); $("copyca").textContent="copied"; setTimeout(()=>$("copyca").textContent="copy",1200); };
+$("fw").href = "https://solscan.io/account/"+CONFIG.FEE_WALLET;
+
+const heliusBase = () => `https://api.helius.xyz/v0/addresses/${CONFIG.FEE_WALLET}/transactions?api-key=${CONFIG.HELIUS_API_KEY}`;
+const rpcUrl = () => `https://mainnet.helius-rpc.com/?api-key=${CONFIG.HELIUS_API_KEY}`;
+
+async function getPrice(){
+  try{
+    const r = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${CONFIG.MINT}`);
+    const a = await r.json();
+    if (Array.isArray(a) && a.length){
+      const p = a.sort((x,y)=>(+(y.liquidity?.usd||0))-(+(x.liquidity?.usd||0)))[0];
+      return parseFloat(p.priceUsd||0)||0;
+    }
+  }catch(e){}
+  return 0;
+}
+
+// Pull burn + swap history (paginated) from Helius enhanced txs
+async function getActivity(){
+  let all = [], before = "";
+  for (let i=0;i<5;i++){            // up to 5 pages (~500 txs)
+    const url = heliusBase() + (before?`&before=${before}`:"") + "&limit=100";
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("Helius "+r.status);
+    const batch = await r.json();
+    if (!Array.isArray(batch) || !batch.length) break;
+    all = all.concat(batch);
+    before = batch[batch.length-1].signature;
+    if (batch.length < 100) break;
+  }
+  return all;
+}
+
+function extractBurns(txs){
+  // A burn of FINNPUTER shows up as a tokenTransfer to the burn / null, or
+  // type === "BURN". We detect by tokenTransfers where mint matches and the
+  // tx type is BURN, or a negative token balance change from the fee wallet
+  // with no recipient. Helius marks these with type "BURN".
+  const burns = [];
+  for (const tx of txs){
+    if (tx.type !== "BURN" && tx.type !== "BURN_NFT") {
+      // also catch token burns embedded in other tx types
+      const tt = (tx.tokenTransfers||[]).filter(t => t.mint === CONFIG.MINT);
+      const burnish = tt.find(t => (t.toUserAccount===null || t.toUserAccount==="" ) );
+      if (!burnish) continue;
+    }
+    const tt = (tx.tokenTransfers||[]).filter(t => t.mint === CONFIG.MINT);
+    let amount = 0;
+    for (const t of tt){ amount += Number(t.tokenAmount)||0; }
+    if (amount <= 0) continue;
+    burns.push({ sig: tx.signature, ts: tx.timestamp, amount });
+  }
+  return burns;
+}
+
+function solSpent(txs){
+  // Sum native SOL leaving the fee wallet in SWAP txs (buyback buys).
+  let sol = 0;
+  for (const tx of txs){
+    if (tx.type !== "SWAP") continue;
+    for (const n of (tx.nativeTransfers||[])){
+      if (n.fromUserAccount === CONFIG.FEE_WALLET) sol += (Number(n.amount)||0)/1e9;
+    }
+  }
+  return sol;
+}
+
+function drawChart(points){
+  const c = $("chart"); const dpr = window.devicePixelRatio||1;
+  const w = c.clientWidth, h = 180;
+  c.width = w*dpr; c.height = h*dpr;
+  const ctx = c.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  if (!points.length){ return; }
+  const pad = 6;
+  const xs = points.map(p=>p.ts), ys = points.map(p=>p.cum);
+  const minX = Math.min(...xs), maxX = Math.max(...xs)||minX+1;
+  const maxY = Math.max(...ys)||1;
+  const X = t => pad + (w-2*pad) * ((t-minX)/((maxX-minX)||1));
+  const Y = v => (h-pad) - (h-2*pad) * (v/maxY);
+  // area
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,"rgba(22,255,155,.28)"); grad.addColorStop(1,"rgba(22,255,155,0)");
+  ctx.beginPath(); ctx.moveTo(X(xs[0]),h-pad);
+  points.forEach(p=>ctx.lineTo(X(p.ts),Y(p.cum)));
+  ctx.lineTo(X(xs[xs.length-1]),h-pad); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+  // line
+  ctx.beginPath(); points.forEach((p,i)=>{ const fx=X(p.ts),fy=Y(p.cum); i?ctx.lineTo(fx,fy):ctx.moveTo(fx,fy); });
+  ctx.strokeStyle="#16ff9b"; ctx.lineWidth=2; ctx.shadowColor="rgba(22,255,155,.6)"; ctx.shadowBlur=8; ctx.stroke();
+}
+
+function setLive(ok){
+  const u = $("upd");
+  u.classList.toggle("live", !!ok);
+  u.querySelector("span:last-child").textContent =
+    (ok?"Live · updated ":"Error · ") + new Date().toLocaleTimeString();
+}
+
+async function load(){
+  if (!CONFIG.FEE_WALLET || !CONFIG.HELIUS_API_KEY){
+    $("cfgwarn").style.display="block";
+    $("feed").innerHTML = `<li><span class="skel">Waiting for config…</span></li>`;
+    return;
+  }
+  try{
+    const [price, txs] = await Promise.all([getPrice(), getActivity()]);
+    const burns = extractBurns(txs).sort((a,b)=>b.ts-a.ts);
+    const totalBurned = burns.reduce((s,b)=>s+b.amount,0);
+    const sol = solSpent(txs);
+
+    $("m_burned").textContent = fmt(totalBurned);
+    $("m_pct").textContent = ((totalBurned/CONFIG.TOTAL_SUPPLY)*100).toFixed(3)+"%";
+    $("m_usd").textContent = usd(totalBurned*price);
+    $("m_count").textContent = burns.length.toString();
+    $("m_sol").textContent = "SOL spent: " + (sol>0?sol.toFixed(3):"—");
+
+    // chart (oldest→newest cumulative)
+    const asc = [...burns].sort((a,b)=>a.ts-b.ts);
+    let cum=0; const pts = asc.map(b=>({ts:b.ts, cum:(cum+=b.amount)}));
+    drawChart(pts);
+
+    // feed
+    if (!burns.length){
+      $("feed").innerHTML =
+        `<li><div class="state"><span class="em">🔥</span>
+         <b>No burns yet.</b><br>Buyback &amp; burn activates once the fee wallet hits 0.5 SOL.
+         <br>Watch it fill on <a href="https://solscan.io/account/${CONFIG.FEE_WALLET}" target="_blank" rel="noopener">Solscan</a>.</div></li>`;
+    } else {
+      $("feed").innerHTML = burns.slice(0,40).map(b=>`
+        <li>
+          <div class="amt">🔥 <b>${fmt(b.amount)}</b> $FINNPUTER</div>
+          <div class="meta">${ago(b.ts)} · <a href="https://solscan.io/tx/${b.sig}" target="_blank" rel="noopener">${shortSig(b.sig)}</a></div>
+        </li>`).join("");
+    }
+    setLive(true);
+  }catch(e){
+    setLive(false);
+    $("feed").innerHTML = `<li><div class="state err">Couldn't read on-chain data (${String(e.message||e)}). Retrying…</div></li>`;
+  }
+}
+
+load();
+setInterval(load, CONFIG.REFRESH_MS);
+window.addEventListener("resize", ()=>{ /* redraw handled on next refresh */ });
+</script>
+</body>
+</html>
