@@ -80,7 +80,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .feed .meta{color:var(--mut);font-size:12px;text-align:right;white-space:nowrap}
 .feed .meta a{font-size:12px}
 
-.state{padding:30px 6px;text-align:center;color:var(--mut)}
+.state{padding:30px 6px;text-align:center;color:var(--mut);flex:1 1 100%;width:100%}
 .state .em{font-size:30px;display:block;margin-bottom:10px;filter:grayscale(.2)}
 .state b{color:var(--ink)}
 .err{color:var(--amber)}
@@ -90,7 +90,7 @@ footer a{color:var(--mut)}
 .upd{display:inline-flex;align-items:center;gap:7px}
 .upd .d{width:7px;height:7px;border-radius:50%;background:var(--green-dim)}
 .upd.live .d{background:var(--green);box-shadow:0 0 8px var(--green)}
-.skel{color:var(--mut)}
+.skel{color:var(--mut);flex:1 1 100%;text-align:center;display:block}
 .warnbox{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;color:var(--mut);font-size:12.5px;margin-bottom:22px;background:#070b11}
 .warnbox b{color:var(--amber)}
 
@@ -202,7 +202,7 @@ const CONFIG = {
   // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
   // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
   // so it can't be abused elsewhere. REQUIRED.
-  HELIUS_API_KEY: "43a31035-dfca-46f2-a5df-b5e3ba4780d7",
+  HELIUS_API_KEY: "",
 
   // $FINNPUTER mint — already set.
   MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
