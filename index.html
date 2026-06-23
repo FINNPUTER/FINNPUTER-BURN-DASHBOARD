@@ -93,6 +93,15 @@ footer a{color:var(--mut)}
 .skel{color:var(--mut)}
 .warnbox{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;color:var(--mut);font-size:12.5px;margin-bottom:22px;background:#070b11}
 .warnbox b{color:var(--amber)}
+
+.burnbar{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));border-radius:14px;padding:16px 18px;margin-bottom:22px}
+.bb-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--mut);margin-bottom:10px}
+.bb-top b{color:var(--green)}
+.bb-top .vv{color:var(--ink);font-weight:600}
+.bb-track{height:12px;border-radius:8px;background:#070b11;border:1px solid var(--line);overflow:hidden}
+.bb-fill{height:100%;width:0%;border-radius:8px;background:linear-gradient(90deg,var(--green-dim),var(--green));box-shadow:0 0 14px rgba(22,255,155,.6);transition:width .8s ease}
+.bb-sub{color:var(--mut);font-size:12px;margin-top:9px}
+.cd{color:var(--mut);font-size:12px;margin-left:8px}
 </style>
 </head>
 <body>
@@ -119,6 +128,15 @@ footer a{color:var(--mut)}
       <button id="copyca" title="Copy">copy</button>
     </div>
   </section>
+
+  <div class="burnbar" id="burnbar">
+    <div class="bb-top">
+      <span>Next burn at <b id="bb-th" class="mono">0.5</b> SOL</span>
+      <span class="vv mono" id="bb-val">— SOL</span>
+    </div>
+    <div class="bb-track"><div class="bb-fill" id="bb-fill"></div></div>
+    <div class="bb-sub" id="bb-sub">Fee wallet filling toward the next buyback &amp; burn.</div>
+  </div>
 
   <div id="cfgwarn" class="warnbox" style="display:none">
     <b>Setup needed.</b> Open <code class="mono">index.html</code> and set <code class="mono">FEE_WALLET</code> and <code class="mono">HELIUS_API_KEY</code> in the CONFIG block at the top of the script. Until then the dashboard can't read burns.
@@ -162,7 +180,7 @@ footer a{color:var(--mut)}
   </div>
 
   <footer>
-    <p class="upd" id="upd"><span class="d"></span><span>—</span></p>
+    <p class="upd" id="upd"><span class="d"></span><span>—</span><span class="cd mono" id="cd"></span></p>
     <p>
       <a id="fw" href="#" target="_blank" rel="noopener">Fee wallet on Solscan</a> ·
       <a href="https://t.me/FinnputerTradeBot" target="_blank" rel="noopener">FINNPUTER Trade bot</a> ·
@@ -179,12 +197,12 @@ footer a{color:var(--mut)}
    ============================================================ */
 const CONFIG = {
   // The bot's FEE_WALLET address (the one that buys & burns). REQUIRED.
-  FEE_WALLET: "EYvS2JELBKy9JrwdgTuTGxnk2iiaepHHa5fbcdcnWNER",
+  FEE_WALLET: "",
 
   // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
   // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
   // so it can't be abused elsewhere. REQUIRED.
-  HELIUS_API_KEY: "43a31035-dfca-46f2-a5df-b5e3ba4780d7",
+  HELIUS_API_KEY: "",
 
   // $FINNPUTER mint — already set.
   MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
@@ -192,12 +210,16 @@ const CONFIG = {
   // Total minted supply (Bags standard = 1,000,000,000). Used for % of supply.
   TOTAL_SUPPLY: 1000000000,
 
+  // SOL the fee wallet must reach before a buyback & burn fires.
+  BURN_THRESHOLD_SOL: 0.5,
+
   // Auto-refresh interval (ms).
   REFRESH_MS: 60000
 };
 /* ============================================================ */
 
 const $ = id => document.getElementById(id);
+let _nextRefresh = Date.now() + 60000;
 const fmt = n => {
   n = Number(n) || 0;
   if (n >= 1e9) return (n/1e9).toFixed(2)+"B";
@@ -217,11 +239,25 @@ const ago = ts => {
 
 // CA chip
 $("ca").textContent = CONFIG.MINT;
+$("bb-th").textContent = CONFIG.BURN_THRESHOLD_SOL;
 $("copyca").onclick = () => { navigator.clipboard.writeText(CONFIG.MINT); $("copyca").textContent="copied"; setTimeout(()=>$("copyca").textContent="copy",1200); };
 $("fw").href = "https://solscan.io/account/"+CONFIG.FEE_WALLET;
 
 const heliusBase = () => `https://api.helius.xyz/v0/addresses/${CONFIG.FEE_WALLET}/transactions?api-key=${CONFIG.HELIUS_API_KEY}`;
 const rpcUrl = () => `https://mainnet.helius-rpc.com/?api-key=${CONFIG.HELIUS_API_KEY}`;
+
+async function getFeeWalletSol(){
+  // current SOL balance of the fee wallet (progress toward next burn)
+  try{
+    const r = await fetch(rpcUrl(), {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({jsonrpc:"2.0",id:1,method:"getBalance",params:[CONFIG.FEE_WALLET]})
+    });
+    const d = await r.json();
+    const lamports = (d && d.result && d.result.value) || 0;
+    return lamports/1e9;
+  }catch(e){ return null; }
+}
 
 async function getPrice(){
   try{
@@ -311,6 +347,7 @@ function drawChart(points){
 }
 
 function setLive(ok){
+  _nextRefresh = Date.now() + CONFIG.REFRESH_MS;
   const u = $("upd");
   u.classList.toggle("live", !!ok);
   u.querySelector("span:last-child").textContent =
@@ -353,6 +390,19 @@ async function load(){
           <div class="meta">${ago(b.ts)} · <a href="https://solscan.io/tx/${b.sig}" target="_blank" rel="noopener">${shortSig(b.sig)}</a></div>
         </li>`).join("");
     }
+
+    // Fee-wallet fill progress toward the next burn
+    const feeSol = await getFeeWalletSol();
+    if (feeSol !== null){
+      const th = CONFIG.BURN_THRESHOLD_SOL;
+      const pct = Math.max(0, Math.min(100, (feeSol/th)*100));
+      $("bb-val").textContent = feeSol.toFixed(3) + " / " + th + " SOL";
+      $("bb-fill").style.width = pct.toFixed(1) + "%";
+      $("bb-sub").textContent = feeSol >= th
+        ? "Threshold reached. Buyback & burn incoming."
+        : (th - feeSol).toFixed(3) + " SOL until the next burn.";
+    }
+
     setLive(true);
   }catch(e){
     setLive(false);
@@ -362,6 +412,11 @@ async function load(){
 
 load();
 setInterval(load, CONFIG.REFRESH_MS);
+setInterval(function(){
+  const el = $("cd"); if (!el) return;
+  const sec = Math.max(0, Math.round((_nextRefresh - Date.now())/1000));
+  el.textContent = " · next update in " + sec + "s";
+}, 1000);
 window.addEventListener("resize", ()=>{ /* redraw handled on next refresh */ });
 </script>
 </body>
