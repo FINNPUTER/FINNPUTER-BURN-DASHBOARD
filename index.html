@@ -122,7 +122,7 @@ footer a{color:var(--mut)}
 
   <section class="hero">
     <h1>Every fee feeds the <span class="fire">burn</span>.</h1>
-    <p>100% of the FINNPUTER Trade bot's trading fees buy back and burn $FINNPUTER. The bot keeps nothing. Once the fee wallet reaches 0.5 SOL it buys $FINNPUTER on the open market and burns every token. All of it is on-chain and verifiable below.</p>
+    <p>100% of the FINNPUTER Trade bot's trading fees buy back and burn $FINNPUTER. The bot keeps nothing. Once the fee wallet reaches 0.1 SOL it buys $FINNPUTER on the open market and burns every token. All of it is on-chain and verifiable below.</p>
     <div class="ca">
       <span>CA</span><code id="ca" class="mono">—</code>
       <button id="copyca" title="Copy">copy</button>
@@ -131,7 +131,7 @@ footer a{color:var(--mut)}
 
   <div class="burnbar" id="burnbar">
     <div class="bb-top">
-      <span>Next burn at <b id="bb-th" class="mono">0.5</b> SOL</span>
+      <span>Next burn at <b id="bb-th" class="mono">0.1</b> SOL</span>
       <span class="vv mono" id="bb-val">— SOL</span>
     </div>
     <div class="bb-track"><div class="bb-fill" id="bb-fill"></div></div>
@@ -202,7 +202,7 @@ const CONFIG = {
   // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
   // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
   // so it can't be abused elsewhere. REQUIRED.
-  HELIUS_API_KEY: "43a31035-dfca-46f2-a5df-b5e3ba4780d7",
+  HELIUS_API_KEY: "",
 
   // $FINNPUTER mint — already set.
   MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
@@ -211,7 +211,7 @@ const CONFIG = {
   TOTAL_SUPPLY: 1000000000,
 
   // SOL the fee wallet must reach before a buyback & burn fires.
-  BURN_THRESHOLD_SOL: 0.5,
+  BURN_THRESHOLD_SOL: 0.1,
 
   // Auto-refresh interval (ms).
   REFRESH_MS: 60000
@@ -381,7 +381,7 @@ async function load(){
     if (!burns.length){
       $("feed").innerHTML =
         `<li><div class="state"><span class="em">🔥</span>
-         <b>No burns yet.</b><br>Buyback &amp; burn activates once the fee wallet hits 0.5 SOL.
+         <b>No burns yet.</b><br>Buyback &amp; burn activates once the fee wallet hits 0.1 SOL.
          <br>Watch it fill on <a href="https://solscan.io/account/${CONFIG.FEE_WALLET}" target="_blank" rel="noopener">Solscan</a>.</div></li>`;
     } else {
       $("feed").innerHTML = burns.slice(0,40).map(b=>`
