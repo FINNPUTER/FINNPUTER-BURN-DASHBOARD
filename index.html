@@ -202,7 +202,7 @@ const CONFIG = {
   // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
   // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
   // so it can't be abused elsewhere. REQUIRED.
-  HELIUS_API_KEY: "43a31035-dfca-46f2-a5df-b5e3ba4780d7",
+  HELIUS_API_KEY: "",
 
   // $FINNPUTER mint — already set.
   MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
@@ -328,6 +328,12 @@ function drawChart(points){
   const ctx = c.getContext("2d"); ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,w,h);
   if (!points.length){ return; }
+  // A single burn is one point → a line/area needs ≥2 points, so it renders
+  // invisible. Prepend a zero baseline (1h before) so the first burn already
+  // draws as a visible ramp from 0. Extra points extend it naturally.
+  if (points.length === 1){
+    points = [{ts: points[0].ts - 3600, cum: 0}, points[0]];
+  }
   const pad = 6;
   const xs = points.map(p=>p.ts), ys = points.map(p=>p.cum);
   const minX = Math.min(...xs), maxX = Math.max(...xs)||minX+1;
@@ -344,6 +350,9 @@ function drawChart(points){
   // line
   ctx.beginPath(); points.forEach((p,i)=>{ const fx=X(p.ts),fy=Y(p.cum); i?ctx.lineTo(fx,fy):ctx.moveTo(fx,fy); });
   ctx.strokeStyle="#16ff9b"; ctx.lineWidth=2; ctx.shadowColor="rgba(22,255,155,.6)"; ctx.shadowBlur=8; ctx.stroke();
+  // markers — make sparse data (1–2 burns) clearly visible
+  ctx.shadowBlur=0; ctx.fillStyle="#16ff9b";
+  points.forEach(p=>{ ctx.beginPath(); ctx.arc(X(p.ts),Y(p.cum),p.cum>0?3.5:2.5,0,Math.PI*2); ctx.fill(); });
 }
 
 function setLive(ok){
