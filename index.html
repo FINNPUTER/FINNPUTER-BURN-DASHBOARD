@@ -52,10 +52,10 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:16p
 .hero h1{font-size:clamp(26px,4.4vw,40px);margin:0 0 8px;line-height:1.05}
 .hero h1 .fire{color:var(--green);text-shadow:0 0 22px rgba(22,255,155,.5)}
 .hero p{color:var(--mut);margin:0;max-width:62ch;line-height:1.55}
-.ca{margin-top:16px;display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);background:#070b11;border-radius:10px;padding:9px 12px;font-size:13px}
-.ca span{color:var(--mut)}
-.ca code{color:var(--green)}
-.ca button{background:none;border:none;color:var(--mut);cursor:pointer;font-family:inherit;font-size:12px}
+.ca{margin-top:16px;display:flex;align-items:center;gap:10px;max-width:100%;border:1px solid var(--line);background:#070b11;border-radius:10px;padding:9px 12px;font-size:13px}
+.ca span{color:var(--mut);flex-shrink:0}
+.ca code{color:var(--green);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ca button{background:none;border:none;color:var(--mut);cursor:pointer;font-family:inherit;font-size:12px;flex-shrink:0}
 .ca button:hover{color:var(--green)}
 
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
@@ -202,7 +202,7 @@ const CONFIG = {
   // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
   // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
   // so it can't be abused elsewhere. REQUIRED.
-  HELIUS_API_KEY: "43a31035-dfca-46f2-a5df-b5e3ba4780d7",
+  HELIUS_API_KEY: "",
 
   // $FINNPUTER mint — already set.
   MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
