@@ -122,7 +122,7 @@ footer a{color:var(--mut)}
 
   <section class="hero">
     <h1>Every fee feeds the <span class="fire">burn</span>.</h1>
-    <p>100% of the FINNPUTER Trade bot's trading fees buy back and burn $FINNPUTER. The bot keeps nothing. Once the fee wallet reaches 0.1 SOL it buys $FINNPUTER on the open market and burns every token. All of it is on-chain and verifiable below.</p>
+    <p>100% of the FINNPUTER Trade bot's trading fees buy back and burn $FINNPUTER. The bot keeps nothing. Once the fee wallet reaches <b data-th>0.5</b> SOL it buys $FINNPUTER on the open market and burns every token. All of it is on-chain and verifiable below.</p>
     <div class="ca">
       <span>CA</span><code id="ca" class="mono">—</code>
       <button id="copyca" title="Copy">copy</button>
@@ -131,7 +131,7 @@ footer a{color:var(--mut)}
 
   <div class="burnbar" id="burnbar">
     <div class="bb-top">
-      <span>Next burn at <b id="bb-th" class="mono">0.1</b> SOL</span>
+      <span>Next burn at <b id="bb-th" class="mono" data-th>0.5</b> SOL</span>
       <span class="vv mono" id="bb-val">— SOL</span>
     </div>
     <div class="bb-track"><div class="bb-fill" id="bb-fill"></div></div>
@@ -211,7 +211,12 @@ const CONFIG = {
   TOTAL_SUPPLY: 1000000000,
 
   // SOL the fee wallet must reach before a buyback & burn fires.
-  BURN_THRESHOLD_SOL: 0.1,
+  // 316: a fallback only. The live threshold is read from /v1/burns,
+  // which returns threshold_sol from the bot's own config. This page
+  // claimed 0.1 SOL for weeks while the bot ran on 0.5, because the
+  // number was written here by hand and nothing made the two agree.
+  BURN_THRESHOLD_SOL: 0.5,
+  API: "https://api.finnputerdex.com",
 
   // Auto-refresh interval (ms).
   REFRESH_MS: 60000
@@ -240,6 +245,25 @@ const ago = ts => {
 // CA chip
 $("ca").textContent = CONFIG.MINT;
 $("bb-th").textContent = CONFIG.BURN_THRESHOLD_SOL;
+
+/* Ask the bot what the threshold actually is, and correct every place
+   this page states it. Silent on failure: the fallback above is still a
+   number, and a dashboard that blanks out because one call failed is
+   worse than one showing a slightly stale figure. */
+async function syncThreshold(){
+  try{
+    const r = await fetch(CONFIG.API + "/v1/burns");
+    if (!r.ok) return;
+    const d = await r.json();
+    const th = Number((d && (d.threshold_sol ?? (d.data||{}).threshold_sol)));
+    if (!isFinite(th) || th <= 0) return;
+    CONFIG.BURN_THRESHOLD_SOL = th;
+    document.querySelectorAll("[data-th]").forEach(el => {
+      el.textContent = th;
+    });
+  }catch(e){ /* keep the fallback */ }
+}
+syncThreshold();
 $("copyca").onclick = () => { navigator.clipboard.writeText(CONFIG.MINT); $("copyca").textContent="copied"; setTimeout(()=>$("copyca").textContent="copy",1200); };
 $("fw").href = "https://solscan.io/account/"+CONFIG.FEE_WALLET;
 
@@ -390,7 +414,7 @@ async function load(){
     if (!burns.length){
       $("feed").innerHTML =
         `<li><div class="state"><span class="em">🔥</span>
-         <b>No burns yet.</b><br>Buyback &amp; burn activates once the fee wallet hits 0.1 SOL.
+         <b>No burns yet.</b><br>Buyback &amp; burn activates once the fee wallet hits <b data-th>0.5</b> SOL.
          <br>Watch it fill on <a href="https://solscan.io/account/${CONFIG.FEE_WALLET}" target="_blank" rel="noopener">Solscan</a>.</div></li>`;
     } else {
       $("feed").innerHTML = burns.slice(0,40).map(b=>`
