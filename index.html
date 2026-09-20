@@ -218,7 +218,12 @@ const CONFIG = {
   // claimed 0.1 SOL for weeks while the bot ran on 0.5, because the
   // number was written here by hand and nothing made the two agree.
   BURN_THRESHOLD_SOL: 0.5,
-  API: "https://api.finnputerdex.com",
+  /* 526: NICHT api.finnputerdex.com.
+     Das ist der x402-Bezahldienst, ein anderer Server. Die Kern-API mit
+     /v1/burns antwortet unter den Adressen in API_BASES weiter unten.
+     Dieselbe Verwechslung hat in der App schon einmal jeden Bildschirm
+     dunkel gemacht. */
+  API: "",
 
   // Oeffentlicher Solana-Knoten, nur fuer den Kontostand der
   // Gebuehren-Wallet. Kein Schluessel noetig.
@@ -365,8 +370,34 @@ function setLive(ok){
    sechs oder sieben. Die Tabelle des Bots kennt alle.
 
    Und drittens braucht die Seite damit keinen API-Schluessel mehr. */
+/* 526: dieselbe Liste wie in der App, in derselben Reihenfolge.
+   Die erste Adresse, die auf /health antwortet, wird benutzt. Faellt
+   eine aus, laeuft die Seite weiter, statt mit "NetworkError" stehen zu
+   bleiben. */
+const API_BASES = [
+  "https://mcp.finnputerdex.com",
+  "https://core-api.finnputerdex.com",
+  "https://core-api-production-182c.up.railway.app",
+];
+
+async function pickApi(){
+  if (CONFIG.API) return CONFIG.API;
+  for (const base of API_BASES){
+    try{
+      const c = new AbortController();
+      const t = setTimeout(()=>c.abort(), 4000);
+      const r = await fetch(base + "/health", {signal:c.signal});
+      clearTimeout(t);
+      if (r.ok){ CONFIG.API = base; return base; }
+    }catch(e){ /* naechste */ }
+  }
+  CONFIG.API = API_BASES[API_BASES.length-1];
+  return CONFIG.API;
+}
+
 async function getBurnsFromBot(){
-  const r = await fetch(CONFIG.API + "/v1/burns");
+  const base = await pickApi();
+  const r = await fetch(base + "/v1/burns");
   if (!r.ok) throw new Error("bot API " + r.status);
   const d = await r.json();
   const data = (d && d.data) ? d.data : d;
