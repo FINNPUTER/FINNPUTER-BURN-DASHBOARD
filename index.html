@@ -244,7 +244,13 @@ const fmt = n => {
   return n.toLocaleString(undefined,{maximumFractionDigits:2});
 };
 const usd = n => "$"+ (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:2});
-const shortSig = s => s.slice(0,6)+"…"+s.slice(-6);
+/* 527: ein Burn ohne Signatur darf die ganze Liste nicht kippen.
+   "can't access property slice, s is null": aeltere Zeilen in der
+   Datenbank haben keine Signatur, und daran ist der Feed gestorben,
+   obwohl die Zahlen darueber schon richtig waren. */
+const shortSig = s => (s && s.length > 12)
+  ? s.slice(0,6)+"…"+s.slice(-6)
+  : (s || "no signature");
 const ago = ts => {
   const s = Math.floor(Date.now()/1000 - ts);
   if (s < 60) return s+"s ago";
@@ -446,7 +452,9 @@ async function load(){
       $("feed").innerHTML = burns.slice(0,40).map(b=>`
         <li>
           <div class="amt">🔥 <b>${fmt(b.amount)}</b> $FINNPUTER</div>
-          <div class="meta">${ago(b.ts)} · <a href="https://solscan.io/tx/${b.sig}" target="_blank" rel="noopener">${shortSig(b.sig)}</a></div>
+          <div class="meta">${ago(b.ts)} · ${b.sig
+            ? `<a href="https://solscan.io/tx/${b.sig}" target="_blank" rel="noopener">${shortSig(b.sig)}</a>`
+            : "no signature stored"}${b.kind === "burn_now" ? " · manual" : ""}</div>
         </li>`).join("");
     }
 
