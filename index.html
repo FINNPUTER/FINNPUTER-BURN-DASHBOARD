@@ -139,7 +139,7 @@ footer a{color:var(--mut)}
   </div>
 
   <div id="cfgwarn" class="warnbox" style="display:none">
-    <b>Setup needed.</b> Open <code class="mono">index.html</code> and set <code class="mono">FEE_WALLET</code> and <code class="mono">HELIUS_API_KEY</code> in the CONFIG block at the top of the script. Until then the dashboard can't read burns.
+    <b>Setup needed.</b> Open <code class="mono">index.html</code> and set <code class="mono">FEE_WALLET</code> and <code class="mono">API</code> in the CONFIG block at the top of the script. Until then the dashboard can't read burns.
   </div>
 
   <div class="grid">
@@ -202,7 +202,9 @@ const CONFIG = {
   // A Helius API key (helius.dev). Used read-only to fetch burns + supply.
   // Tip: in the Helius dashboard you can lock this key to burns.finnputerdex.com
   // so it can't be abused elsewhere. REQUIRED.
-  HELIUS_API_KEY: "43a31035-dfca-46f2-a5df-b5e3ba4780d7",
+  /* Kein Helius-Schluessel mehr noetig. Der alte stand hier im
+     Quelltext und war fuer jeden Besucher lesbar: bitte in der
+     Helius-Konsole sperren und einen neuen nur fuer den Bot anlegen. */
 
   // $FINNPUTER mint — already set.
   MINT: "Xp8dC5i7EcAeZo873ijwvipt3pUbgvgi5sHsg9sBAGS",
@@ -217,6 +219,10 @@ const CONFIG = {
   // number was written here by hand and nothing made the two agree.
   BURN_THRESHOLD_SOL: 0.5,
   API: "https://api.finnputerdex.com",
+
+  // Oeffentlicher Solana-Knoten, nur fuer den Kontostand der
+  // Gebuehren-Wallet. Kein Schluessel noetig.
+  SOLANA_RPC: "https://api.mainnet-beta.solana.com",
 
   // Auto-refresh interval (ms).
   REFRESH_MS: 60000
@@ -267,8 +273,10 @@ syncThreshold();
 $("copyca").onclick = () => { navigator.clipboard.writeText(CONFIG.MINT); $("copyca").textContent="copied"; setTimeout(()=>$("copyca").textContent="copy",1200); };
 $("fw").href = "https://solscan.io/account/"+CONFIG.FEE_WALLET;
 
-const heliusBase = () => `https://api.helius.xyz/v0/addresses/${CONFIG.FEE_WALLET}/transactions?api-key=${CONFIG.HELIUS_API_KEY}`;
-const rpcUrl = () => `https://mainnet.helius-rpc.com/?api-key=${CONFIG.HELIUS_API_KEY}`;
+/* 525: kein Helius mehr auf dieser Seite.
+   Der Wallet-Stand kommt jetzt ueber den oeffentlichen Solana-Knoten,
+   eine einzige getBalance-Abfrage je Aktualisierung. */
+const rpcUrl = () => (CONFIG.SOLANA_RPC || "https://api.mainnet-beta.solana.com");
 
 async function getFeeWalletSol(){
   // current SOL balance of the fee wallet (progress toward next burn)
@@ -296,54 +304,11 @@ async function getPrice(){
 }
 
 // Pull burn + swap history (paginated) from Helius enhanced txs
-async function getActivity(){
-  let all = [], before = "";
-  for (let i=0;i<5;i++){            // up to 5 pages (~500 txs)
-    const url = heliusBase() + (before?`&before=${before}`:"") + "&limit=100";
-    const r = await fetch(url);
-    if (!r.ok) throw new Error("Helius "+r.status);
-    const batch = await r.json();
-    if (!Array.isArray(batch) || !batch.length) break;
-    all = all.concat(batch);
-    before = batch[batch.length-1].signature;
-    if (batch.length < 100) break;
-  }
-  return all;
-}
-
-function extractBurns(txs){
-  // A burn of FINNPUTER shows up as a tokenTransfer to the burn / null, or
-  // type === "BURN". We detect by tokenTransfers where mint matches and the
-  // tx type is BURN, or a negative token balance change from the fee wallet
-  // with no recipient. Helius marks these with type "BURN".
-  const burns = [];
-  for (const tx of txs){
-    if (tx.type !== "BURN" && tx.type !== "BURN_NFT") {
-      // also catch token burns embedded in other tx types
-      const tt = (tx.tokenTransfers||[]).filter(t => t.mint === CONFIG.MINT);
-      const burnish = tt.find(t => (t.toUserAccount===null || t.toUserAccount==="" ) );
-      if (!burnish) continue;
-    }
-    const tt = (tx.tokenTransfers||[]).filter(t => t.mint === CONFIG.MINT);
-    let amount = 0;
-    for (const t of tt){ amount += Number(t.tokenAmount)||0; }
-    if (amount <= 0) continue;
-    burns.push({ sig: tx.signature, ts: tx.timestamp, amount });
-  }
-  return burns;
-}
-
-function solSpent(txs){
-  // Sum native SOL leaving the fee wallet in SWAP txs (buyback buys).
-  let sol = 0;
-  for (const tx of txs){
-    if (tx.type !== "SWAP") continue;
-    for (const n of (tx.nativeTransfers||[])){
-      if (n.fromUserAccount === CONFIG.FEE_WALLET) sol += (Number(n.amount)||0)/1e9;
-    }
-  }
-  return sol;
-}
+/* 525: getActivity, extractBurns und solSpent sind entfernt.
+   Sie haben die Burns bei Helius gesucht, fuenf Enhanced-Abfragen je
+   Aktualisierung, und dabei bis zu 30.000 Credits je Stunde verbraucht.
+   Die Daten kommen jetzt aus der Datenbank des Bots ueber /v1/burns.
+   Toten Code stehen zu lassen waere die naechste Falle. */
 
 function drawChart(points){
   const c = $("chart"); const dpr = window.devicePixelRatio||1;
@@ -387,22 +352,52 @@ function setLive(ok){
     (ok?"Live · updated ":"Error · ") + new Date().toLocaleTimeString();
 }
 
+/* 525: Die Burns kommen aus der Datenbank des Bots, nicht von Helius.
+
+   Vorher las diese Seite bei jedem Aufruf bis zu fuenf
+   Enhanced-Abfragen und wiederholte das jede Minute. Eine solche
+   Abfrage kostet 100 Credits, macht 30.000 je Stunde pro offenem Tab.
+   Am 19.09.2026 standen 999.000 von 1.000.000 Credits auf der Uhr, und
+   es sah aus, als waere es der Scanner.
+
+   Zweitens las sie nur die letzten 500 Transaktionen der Wallet. Was
+   davor lag, fiel hinten raus: die Seite zeigte drei Burns, es waren
+   sechs oder sieben. Die Tabelle des Bots kennt alle.
+
+   Und drittens braucht die Seite damit keinen API-Schluessel mehr. */
+async function getBurnsFromBot(){
+  const r = await fetch(CONFIG.API + "/v1/burns");
+  if (!r.ok) throw new Error("bot API " + r.status);
+  const d = await r.json();
+  const data = (d && d.data) ? d.data : d;
+  const list = (data.burns || []).map(b => ({
+    sig: b.signature, ts: Number(b.at) || 0,
+    amount: Number(b.burned) || 0, kind: b.kind || "buyback"
+  })).filter(b => b.amount > 0);
+  return {
+    list,
+    /* Die SUMMEN kommen ebenfalls vom Bot und nicht aus der Liste:
+       die Liste ist auf 200 Zeilen begrenzt, die Summe ist es nicht.
+       Genau dieser Unterschied hat die alte Seite zu klein rechnen
+       lassen. */
+    total: Number(data.burned) || list.reduce((x, b) => x + b.amount, 0),
+    count: Number(data.count) || list.length,
+    sol: Number(data.spend_sol) || 0,
+    enabled: !!data.enabled
+  };
+}
+
 async function load(){
-  if (!CONFIG.FEE_WALLET || !CONFIG.HELIUS_API_KEY){
-    $("cfgwarn").style.display="block";
-    $("feed").innerHTML = `<li><span class="skel">Waiting for config…</span></li>`;
-    return;
-  }
   try{
-    const [price, txs] = await Promise.all([getPrice(), getActivity()]);
-    const burns = extractBurns(txs).sort((a,b)=>b.ts-a.ts);
-    const totalBurned = burns.reduce((s,b)=>s+b.amount,0);
-    const sol = solSpent(txs);
+    const [price, bot] = await Promise.all([getPrice(), getBurnsFromBot()]);
+    const burns = bot.list.sort((a,b)=>b.ts-a.ts);
+    const totalBurned = bot.total;
+    const sol = bot.sol;
 
     $("m_burned").textContent = fmt(totalBurned);
     $("m_pct").textContent = ((totalBurned/CONFIG.TOTAL_SUPPLY)*100).toFixed(3)+"%";
     $("m_usd").textContent = usd(totalBurned*price);
-    $("m_count").textContent = burns.length.toString();
+    $("m_count").textContent = (bot.count || burns.length).toString();
     $("m_sol").textContent = "SOL spent: " + (sol>0?sol.toFixed(3):"—");
 
     // chart (oldest→newest cumulative)
@@ -431,9 +426,14 @@ async function load(){
       const pct = Math.max(0, Math.min(100, (feeSol/th)*100));
       $("bb-val").textContent = feeSol.toFixed(3) + " / " + th + " SOL";
       $("bb-fill").style.width = pct.toFixed(1) + "%";
-      $("bb-sub").textContent = feeSol >= th
-        ? "Threshold reached. Buyback & burn incoming."
-        : (th - feeSol).toFixed(3) + " SOL until the next burn.";
+      /* 525: ist die Schleife abgeschaltet, kommt auch kein Burn. Einen
+         Fortschritt auf ein Ereignis anzuzeigen, das nicht stattfindet,
+         ist die Art von Zahl, wegen der man Seiten nicht mehr glaubt. */
+      $("bb-sub").textContent = !bot.enabled
+        ? "Buyback and burn is paused right now. Fees keep collecting."
+        : (feeSol >= th
+            ? "Threshold reached. Buyback & burn incoming."
+            : (th - feeSol).toFixed(3) + " SOL until the next burn.");
     }
 
     setLive(true);
